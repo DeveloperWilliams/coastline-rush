@@ -1,0 +1,7 @@
+{
+  "name": "Coastline.Editor",
+  "rootNamespace": "Coastline",
+  "references": ["Coastline.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

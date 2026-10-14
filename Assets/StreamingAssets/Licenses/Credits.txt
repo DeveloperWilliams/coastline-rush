@@ -1,0 +1,13 @@
+Coastline Rush 0.2.0
+
+Original code and synthesized audio: MIT license; see Game-MIT.txt.
+Josefin Sans: The Josefin Sans Project Authors; SIL OFL 1.1.
+https://fonts.google.com/specimen/Josefin+Sans
+
+Kenney artwork: Car Kit 3.1, Racing Kit 1.0, Nature Kit 1.0; CC0.
+https://kenney.nl/assets/car-kit
+https://kenney.nl/assets/racing-kit
+https://kenney.nl/assets/nature-kit
+
+Original license files accompany this build in the same directory.
+Unity engine components retain their own third-party licenses.

@@ -1,0 +1,30 @@
+{
+    "passed": true,
+    "circuit": "HIGHLAND LOOP",
+    "weather": "Wet",
+    "error": "",
+    "completedUtc": "2026-10-14T20:38:20.0718530Z",
+    "accelerationKph": 73.81597137451172,
+    "brakingKph": 0.00021341950923670083,
+    "steeringDegrees": 60.79698944091797,
+    "boostRemaining": 0.6039986610412598,
+    "raceSeconds": 166.50286865234376,
+    "playerRecoveries": 0,
+    "completedLaps": 3,
+    "checks": [
+        "Josefin Sans fonts load in the game",
+        "All eleven original sound assets load",
+        "Four suspension contacts on tarmac",
+        "Chassis settles upright",
+        "Torque accelerates past 50 km/h in four seconds",
+        "Brakes reduce speed below 8 km/h",
+        "Wheel steering turns the chassis",
+        "Grounded nitro applies force and drains charge",
+        "Solid barrier generates a vehicle collision",
+        "Vehicle cannot drive through a solid barrier",
+        "Pause freezes timer and PhysX together",
+        "Restart resets charge, timer and lap state",
+        "Physical AI drives all three laps and reaches results",
+        "Full-race driver completes without recovery teleports"
+    ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Coastline.Runtime",
+  "rootNamespace": "Coastline",
+  "references": [],
+  "autoReferenced": true
+}

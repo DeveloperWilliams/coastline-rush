@@ -1,0 +1,6 @@
+2026-10-14T20:47:32.895038+00:00
+PASS macOS build / 113270095 bytes / 00:00:05.1217130
+Universal Mach-O: arm64 + x86_64
+Native player launched; race HUD, Josefin Sans, imported models and sky rendered.
+Native player completed lap crossings; no runtime exceptions in the fresh Player.log.
+Original font, artwork and game licenses bundled under StreamingAssets/Licenses.

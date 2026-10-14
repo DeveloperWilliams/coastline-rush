@@ -1,0 +1,15 @@
+name: Unity repository integrity
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checkout-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate Unity asset metadata, licenses and package lock
+        run: python3 scripts/check_repository.py
