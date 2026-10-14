@@ -26,6 +26,35 @@ namespace Coastline
         [Header("Boost")][Min(1)] public float boostAcceleration = 9;
         [Min(.01f)] public float boostDrain = .22f;
         [Min(.01f)] public float boostRecharge = .065f;
+        public static VehicleTuning ForModel(VehicleTuning template, int model)
+        {
+            var tune = Instantiate(template);
+            tune.name = VehicleFactory.Names[model % 3] + " handling";
+            if (model % 3 == 1)
+            {
+                tune.mass *= .94f;
+                tune.torquePerWheel *= .89f;
+                tune.topSpeed *= .93f;
+                tune.tyreGrip *= 1.10f;
+                tune.steeringResponse *= 1.15f;
+                tune.highSpeedSteering *= .90f;
+                tune.tractionControl = .70f;
+                tune.boostAcceleration *= .90f;
+            }
+            else if (model % 3 == 2)
+            {
+                tune.mass *= .92f;
+                tune.torquePerWheel *= 1.07f;
+                tune.topSpeed *= 1.09f;
+                tune.tyreGrip *= .94f;
+                tune.steeringResponse *= .90f;
+                tune.highSpeedSteering *= .95f;
+                tune.tractionControl = .38f;
+                tune.downforce *= 1.12f;
+                tune.boostAcceleration *= 1.08f;
+            }
+            return tune;
+        }
         public static VehicleTuning Defaults() => CreateInstance<VehicleTuning>();
     }
     public struct DriveInput

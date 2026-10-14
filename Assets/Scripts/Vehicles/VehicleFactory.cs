@@ -7,6 +7,8 @@ namespace Coastline
         public static readonly string[] Names = { "APEX GT", "CLUB SPORT", "NOVA R" };
         public static VehicleController Create(int modelIndex, Color accent, bool player, TrackPath track, VehicleTuning tuning, WorldMaterials materials, Transform parent)
         {
+            tuning = VehicleTuning.ForModel(tuning, modelIndex);
+            materials.Own(tuning);
             var root = new GameObject(player ? "Player / " + Names[modelIndex % 3] : "Rival");
             root.transform.SetParent(parent, false);
             var visual = new GameObject("Suspended body").transform;

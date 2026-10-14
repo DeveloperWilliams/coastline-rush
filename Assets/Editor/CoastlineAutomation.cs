@@ -58,6 +58,9 @@ public static class CoastlineAutomation
                 case "validate-wet":
                     CoastlineChecks.RunWetChecks();
                     break;
+                case "validate-nova":
+                    CoastlineChecks.RunNovaSoloChecks();
+                    break;
                 case "prepare":
                     BuildRace.PrepareScene();
                     break;

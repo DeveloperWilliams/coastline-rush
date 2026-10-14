@@ -280,17 +280,21 @@ namespace Coastline
                 WorldObject.Box("Sail", p + new Vector3(1.3f, 5, 0), new Vector3(2.6f, 7, .05f), Materials.White, Props);
             }
         }
+        public RacingPlan Plan
+        {
+            get; private set;
+        }
+        public RacingGuide Guide
+        {
+            get; private set;
+        }
         void RacingGuide()
         {
             RacingLine = new GameObject("Driving guide");
             RacingLine.transform.SetParent(transform, false);
-            for (float d = 4; d < Track.Length; d += 9)
-            {
-                float curvature = Track.Curvature(d + 25);
-                Material mat = curvature > .018f ? Materials.Coral : curvature > .01f ? Materials.White : Materials.Teal;
-                var marker = WorldObject.Box("Suggested line", Track.Position(d) + Vector3.up * .055f, new Vector3(.25f, .016f, 2), mat, RacingLine.transform);
-                marker.transform.rotation = Track.Rotation(d);
-            }
+            Plan = new RacingPlan(Track);
+            Guide = RacingLine.AddComponent<RacingGuide>();
+            Guide.Initialize(Plan, Track, Materials);
         }
     }
 }

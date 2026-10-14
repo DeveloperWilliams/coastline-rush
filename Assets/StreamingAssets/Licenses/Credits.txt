@@ -1,4 +1,4 @@
-Coastline Rush 0.2.0
+Coastline Rush 0.3.0
 
 Original code and synthesized audio: MIT license; see Game-MIT.txt.
 Josefin Sans: The Josefin Sans Project Authors; SIL OFL 1.1.

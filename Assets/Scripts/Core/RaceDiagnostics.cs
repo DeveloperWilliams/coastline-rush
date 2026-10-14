@@ -15,9 +15,11 @@ namespace Coastline
         sealed class Report
         {
             public bool passed;
-            public string circuit, weather, error, completedUtc;
+            public string circuit, weather, car, mode, error, completedUtc;
+            public string version = "0.3.0";
             public float accelerationKph, brakingKph, steeringDegrees, boostRemaining, raceSeconds;
-            public int playerRecoveries, completedLaps;
+            public int playerRecoveries, completedLaps, finishers;
+            public bool observedFinishPeriod;
             public List<string> checks = new List<string>();
         }
 
@@ -69,6 +71,8 @@ namespace Coastline
             race = bootstrap.Director;
             report.circuit = race.Circuit.Track.Name;
             report.weather = race.Settings.Weather.ToString();
+            report.car = VehicleFactory.Names[race.Settings.Car];
+            report.mode = race.Settings.Mode.ToString();
             race.DiagnosticMode = true;
             Check(Resources.Load<Font>("Fonts/JosefinSans-regular") && Resources.Load<Font>("Fonts/JosefinSans-bold"),
                 "Josefin Sans fonts load in the game");
@@ -134,8 +138,17 @@ namespace Coastline
             Check(Vector3.Distance(paused, car.Body.position) < .001f && Mathf.Abs(timer - race.RaceTime) < .001f,
                 "Pause freezes timer and PhysX together");
             race.Resume();
+            car.Input = new DriveInput { Throttle = 1, Boost = true };
+            yield return new WaitForSeconds(2);
+            float charge = car.Nitro;
+            float rawClock = race.RaceTime;
+            race.Recover(race.Player);
+            Check(Mathf.Abs(race.RaceTime - rawClock) < .001f && race.Player.Penalty == 5 && (race.Entrants.Count == 1 || race.Entrants[0].Penalty == 0),
+                "Recovery applies only entrant penalty without changing global clock");
+            Check(Mathf.Abs(car.Nitro - charge) < .001f && !race.Player.Progress.RecordEligible,
+                "Recovery preserves boost and excludes the lap from records");
             race.StartRace();
-            Check(car.Nitro > .999f && race.RaceTime == 0 && race.Player.Progress.CompletedLaps == 0,
+            Check(car.Nitro > .999f && race.RaceTime == 0 && race.Player.Progress.CompletedLaps == 0 && race.Penalty == 0 && car.Gear == 1,
                 "Restart resets charge, timer and lap state");
 
             foreach (var entrant in race.Entrants)
@@ -143,7 +156,8 @@ namespace Coastline
             autopilot = car.gameObject.AddComponent<AIDriver>();
             autopilot.Director = race;
             autopilot.Entrant = race.Player;
-            autopilot.Pace = .9f;
+            autopilot.Pace = .95f;
+            if (race.Entrants[0].Driver) race.Entrants[0].Driver.Pace = .82f;
             autopilot.Lane = race.Player.Lane;
             race.Player.Driver = autopilot;
             Time.timeScale = 3;
@@ -151,14 +165,20 @@ namespace Coastline
             while (race.State != RaceState.Results && Time.realtimeSinceStartup - started < 125)
             {
                 yield return new WaitForSecondsRealtime(.5f);
+                if (race.State == RaceState.Finishing) report.observedFinishPeriod = true;
                 if (!car || float.IsNaN(car.Body.position.x)) throw new InvalidOperationException("Physics became invalid");
             }
             report.completedLaps = race.Player.Progress.CompletedLaps;
             report.playerRecoveries = race.Player.Recoveries;
-            report.raceSeconds = race.RaceTime;
-            Check(race.State == RaceState.Results && report.completedLaps == 3,
-                "Physical AI drives all three laps and reaches results");
+            report.raceSeconds = race.PlayerTime;
+            foreach (var entrant in race.Entrants)
+                if (entrant.Progress.Finished) report.finishers++;
+            Check(race.State == RaceState.Results && report.completedLaps == race.Settings.Laps,
+                "Physical AI completes the configured race and reaches results");
             Check(report.playerRecoveries == 0, "Full-race driver completes without recovery teleports");
+            Check(race.Entrants.Count > 1 ? report.observedFinishPeriod : !report.observedFinishPeriod,
+                "Circuit waits for rivals; solo race finalizes immediately");
+            Check(report.finishers == race.Entrants.Count, "All entrants complete before final classification");
             Time.timeScale = 1;
             ScreenCapture.CaptureScreenshot(Path.Combine(Directory.GetCurrentDirectory(), "Logs/advanced-race.png"));
             yield return new WaitForSecondsRealtime(.5f);

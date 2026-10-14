@@ -46,7 +46,7 @@ public static class BuildRace
         EditorSceneManager.SaveScene(bootstrap.gameObject.scene);
         PlayerSettings.companyName = "Open Road";
         PlayerSettings.productName = "Coastline Rush";
-        PlayerSettings.bundleVersion = "0.2.0";
+        PlayerSettings.bundleVersion = "0.3.0";
         PlayerSettings.defaultScreenWidth = 1600;
         PlayerSettings.defaultScreenHeight = 900;
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;

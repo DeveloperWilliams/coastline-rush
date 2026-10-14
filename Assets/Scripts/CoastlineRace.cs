@@ -44,6 +44,12 @@ public sealed class CoastlineRace : MonoBehaviour
                 Settings.Car = 1;
                 Settings.Weather = RoadWeather.Wet;
             }
+            else if (UnityEditor.SessionState.GetInt("Coastline.ValidationPreset", 0) == 2)
+            {
+                Settings.Car = 2;
+                Settings.Laps = 1;
+                Settings.Mode = RaceMode.TimeTrial;
+            }
         }
 #endif
         Settings.Track = Mathf.Clamp(Settings.Track, 0, 1);
@@ -59,6 +65,51 @@ public sealed class CoastlineRace : MonoBehaviour
 #if UNITY_EDITOR
   RaceDiagnostics.Begin(this);
 #endif
+    }
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.F11))
+        {
+            bool fullscreen = !Screen.fullScreen;
+            Screen.SetResolution(fullscreen ? Display.main.systemWidth : 1600,
+                fullscreen ? Display.main.systemHeight : 900,
+                fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed);
+        }
+        if (Director == null || Director.State != RaceState.Garage)
+            return;
+        bool changed = false;
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            Settings.Car = (Settings.Car + 2) % 3;
+            changed = true;
+        }
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            Settings.Car = (Settings.Car + 1) % 3;
+            changed = true;
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            Settings.Track = 1 - Settings.Track;
+            changed = true;
+        }
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            Settings.Mode = Settings.Mode == RaceMode.Circuit ? RaceMode.TimeTrial : RaceMode.Circuit;
+            changed = true;
+        }
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            Settings.Weather = Settings.Weather == RoadWeather.Dry ? RoadWeather.Wet : RoadWeather.Dry;
+            changed = true;
+        }
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            Settings.Laps = Settings.Laps == 1 ? 3 : Settings.Laps == 3 ? 5 : 1;
+            changed = true;
+        }
+        if (changed)
+            BuildWorld();
     }
     public void BuildWorld()
     {

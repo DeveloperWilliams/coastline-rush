@@ -55,7 +55,9 @@ namespace Coastline
         {
             get; private set;
         }
-        public int Gear => Mathf.Clamp(1 + (int)(Speed / 11), 1, 5);
+        public readonly AutomaticGearbox Drivetrain = new AutomaticGearbox();
+        public int Gear => Drivetrain.Gear;
+        public float EngineRpm => Drivetrain.EngineRpm;
         public TrackLocation Location
         {
             get; private set;
@@ -141,6 +143,10 @@ namespace Coastline
                 brake = Mathf.Max(brake, throttle);
                 throttle = 0;
             }
+            float wheelRpm = 0;
+            foreach (var wheel in Wheels)
+                wheelRpm += Mathf.Abs(wheel.rpm) * .25f;
+            Drivetrain.Tick(wheelRpm, throttle, ForwardSpeed, dt);
             GroundedWheels = 0;
             Slip = 0;
             for (int i = 0; i < 4; i++)
@@ -159,7 +165,7 @@ namespace Coastline
                 var forward = w.forwardFriction;
                 forward.stiffness = grip;
                 w.forwardFriction = forward;
-                float torque = throttle * Tuning.torquePerWheel * Tuning.torqueCurve.Evaluate(Mathf.Clamp01(Speed / Tuning.topSpeed));
+                float torque = throttle * Tuning.torquePerWheel * Drivetrain.TorqueFactor * Tuning.torqueCurve.Evaluate(Mathf.Clamp01(Speed / Tuning.topSpeed));
                 if ((ForwardSpeed > Tuning.topSpeed && throttle > 0) || (ForwardSpeed < -Tuning.reverseSpeed && throttle < 0))
                     torque = 0;
                 if (grounded && Mathf.Abs(hit.forwardSlip) > .55f)
@@ -231,7 +237,7 @@ namespace Coastline
             if (IsPlayer && Impact > .2f)
                 GetComponent<VehicleAudio>()?.PlayImpact(Impact);
         }
-        public void ResetAt(float metres, float lane = 0)
+        public void ResetAt(float metres, float lane = 0, bool refillBoost = true)
         {
             Vector3 p = Track.Position(metres, lane) + Vector3.up * .32f;
             Body.position = p;
@@ -241,7 +247,9 @@ namespace Coastline
             transform.SetPositionAndRotation(p, Body.rotation);
             lastVelocity = Vector3.zero;
             steer = 0;
-            Nitro = 1;
+            if (refillBoost)
+                Nitro = 1;
+            Drivetrain.Reset();
             Input = DriveInput.Stopped;
             if (SkidTrails != null)
                 foreach (var trail in SkidTrails)

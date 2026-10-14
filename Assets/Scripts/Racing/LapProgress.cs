@@ -34,6 +34,11 @@ namespace Coastline
         {
             get; private set;
         }
+        public bool LastLapEligible
+        {
+            get; private set;
+        }
+        public bool RecordEligible { get; private set; } = true;
         float previous, lapStarted, wrongTime; bool crossedStart;
         public void Reset(float gridDistance, float length)
         {
@@ -45,6 +50,8 @@ namespace Coastline
             lapStarted = wrongTime = 0;
             crossedStart = false;
             LapInvalid = Finished = WrongWay = false;
+            RecordEligible = true;
+            LastLapEligible = false;
         }
         public bool Tick(float courseDistance, float lateral, float length, float halfWidth, float time, float dt, int laps)
         {
@@ -82,8 +89,10 @@ namespace Coastline
                 if (NextSector == SectorCount && !LapInvalid)
                 {
                     LastLap = time - lapStarted;
-                    if (BestLap == 0 || LastLap < BestLap)
+                    LastLapEligible = RecordEligible;
+                    if (LastLapEligible && (BestLap == 0 || LastLap < BestLap))
                         BestLap = LastLap;
+                    RecordEligible = true;
                     CompletedLaps++;
                     Finished = CompletedLaps >= laps;
                     NextSector = 1;
@@ -95,6 +104,7 @@ namespace Coastline
                 NextSector = 1;
                 lapStarted = time;
                 LapInvalid = false;
+                RecordEligible = true;
             }
             return false;
         }
@@ -103,6 +113,7 @@ namespace Coastline
             previous = Mathf.Repeat(distance, length);
             AbsoluteDistance = distance;
             LapInvalid = false;
+            RecordEligible = false;
             WrongWay = false;
             wrongTime = 0;
         }

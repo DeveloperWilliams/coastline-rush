@@ -56,17 +56,33 @@ throttle load and gear shift dips; tyre scrub follows grounded lateral slip. Roa
 noise, nitro and collision voices are independent of the engine mix. Race cues
 are tied to state transitions. All sounds are reproducible original synthesis.
 Josefin Sans uses actual regular/semibold/bold font files rather than synthetic
-bold styling. The three car choices currently share one tune to keep the racing fair.
+bold styling. Each car derives its own runtime tune from the baseline Inspector
+asset. Variants are owned by the generated world and released when it is rebuilt.
 
 `AIDriver` uses pure pursuit to follow a lane offset. It estimates upcoming corner
 speed from curvature and constrains the approach speed using braking distance.
-Nearby racers affect passing and braking. Recovery returns to a completed sector;
-player recovery has a five-second penalty.
+Nearby racers affect passing and braking. A pass requires an unoccupied target
+lane, including a closing rear-traffic check, and holds its lane target. Finished
+cars continue at a reduced cruising pace during classification. Recovery returns
+to a completed sector with a five-second penalty.
 
-`RaceDirector` owns Garage, Countdown, Racing, Paused and Results states. Each
-entrant has a `LapProgress`. A valid lap requires 12 ordered sectors and a forward
-finish crossing. Best laps are keyed by circuit version, car and weather so the
-prototype's incompatible records cannot affect the new game.
+`RaceDirector` owns Garage, Countdown, Racing, Finishing, Paused and Results
+states. Each entrant has a `LapProgress`. A valid lap requires 12 ordered sectors and a forward
+finish crossing. Best laps use a v3 key by circuit version, car and weather so
+earlier handling records cannot affect the new game. Recovery preserves nitro and adds an
+individual result penalty without changing the shared elapsed clock. Recovered
+laps remain valid for race progress but cannot establish a lap record.
+
+After the player finishes, the finish window stays active for up to 45 simulation
+seconds while rivals race. Final order uses each finisher's elapsed time plus
+penalties. Remaining racers become DNF, ordered by progress. Pausing also freezes
+the finish window. Time trials finish immediately because there are no rivals.
+
+`RacingPlan` detects separated curvature peaks, constructs and smooths conservative
+outside/apex/outside lane offsets, and propagates braking limits backward through
+the closed circuit. This is a heuristic guide, not an optimized racing-line solver.
+The guide and AI derive speed profiles from grip, weather and speed limits. Guide
+colours compare the player's current speed against upcoming recommended speeds.
 
 ## Handling decisions
 WheelCollider was chosen over custom raycast tire forces because the installed
@@ -76,9 +92,12 @@ small. A more complex tire model is deferred until measurement identifies a need
 
 The model is an arcade/simcade starting point, not a realistic vehicle simulator:
 there is no clutch, differential model, tire temperature, tire wear or damage
-simulation. The displayed five gears drive audio feedback; wheel torque follows
-a tunable speed curve, not a full gearbox. Wet weather changes grip and lighting;
-it does not simulate rain droplets or standing water.
+simulation. The arcade automatic gearbox uses wheel RPM, five ratios, an up/downshift
+hysteresis gap and a short torque interruption. Its state drives audio and HUD
+as well as a modest gear-dependent torque factor. The baseline torque curve is
+still speed-based; this is not a clutch/differential transmission simulation.
+Wet weather changes grip and lighting; it does not simulate rain droplets or
+standing water.
 
 ## Performance and acceptance
 Target: steady 60 FPS on the current Apple Silicon Mac with six cars.
@@ -96,7 +115,7 @@ Acceptance checks:
 6. macOS build succeeds and presents the same garage and race.
 
 ## Next development milestones
-- Tune each car into a distinct class after telemetry-based handling playtests.
+- Refine the distinct car classes using human handling playtests and wheel telemetry.
 - Add a ghost for time trial, controller support, input rebinding and accessibility.
 - Move menu layout to UI Toolkit when controller navigation and localization land.
 - Bake or author editor-visible tracks/prefabs and add a track-authoring workflow.

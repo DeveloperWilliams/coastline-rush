@@ -3,14 +3,16 @@
     "circuit": "PALM COAST",
     "weather": "Dry",
     "error": "",
-    "completedUtc": "2026-10-14T20:36:04.1726150Z",
-    "accelerationKph": 73.80953979492188,
-    "brakingKph": 0.000024188697352656163,
-    "steeringDegrees": 63.047401428222659,
+    "completedUtc": "2026-10-14T21:05:55.8706670Z",
+    "accelerationKph": 74.78544616699219,
+    "brakingKph": 0.000026865593099500984,
+    "steeringDegrees": 74.79254150390625,
     "boostRemaining": 0.5995986461639404,
-    "raceSeconds": 159.25291442871095,
+    "raceSeconds": 164.94000244140626,
     "playerRecoveries": 0,
     "completedLaps": 3,
+    "finishers": 6,
+    "observedFinishPeriod": true,
     "checks": [
         "Josefin Sans fonts load in the game",
         "All eleven original sound assets load",
@@ -23,8 +25,12 @@
         "Solid barrier generates a vehicle collision",
         "Vehicle cannot drive through a solid barrier",
         "Pause freezes timer and PhysX together",
+        "Recovery applies only entrant penalty without changing global clock",
+        "Recovery preserves boost and excludes the lap from records",
         "Restart resets charge, timer and lap state",
         "Physical AI drives all three laps and reaches results",
-        "Full-race driver completes without recovery teleports"
+        "Full-race driver completes without recovery teleports",
+        "Player finish starts a provisional period for remaining rivals",
+        "Every rival completes before final classification"
     ]
 }

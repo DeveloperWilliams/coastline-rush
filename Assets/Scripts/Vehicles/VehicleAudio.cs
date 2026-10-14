@@ -10,8 +10,7 @@ namespace Coastline
         VehicleController vehicle;
         AudioSource idle, load, tyres, wind, nitro, impact;
         AudioClip impactClip;
-        int gear = 1;
-        float shift, rpm, lastImpact = -1;
+        float rpm, lastImpact = -1;
 
         void Start()
         {
@@ -53,26 +52,13 @@ namespace Coastline
         {
             if (!vehicle || !idle)
                 return;
-            // Hysteresis keeps the audible gearbox from fluttering on a boundary.
-            if (gear < 5 && vehicle.Speed > gear * 11 + 1)
-            {
-                gear++;
-                shift = .13f;
-            }
-            else if (gear > 1 && vehicle.Speed < (gear - 1) * 11 - 2)
-            {
-                gear--;
-                shift = .08f;
-            }
-            shift = Mathf.Max(0, shift - Time.deltaTime);
             float throttle = vehicle.ControlEnabled ? Mathf.Abs(vehicle.Input.Throttle) : 0;
-            float target = Mathf.Clamp01((vehicle.Speed - (gear - 1) * 11) / 13) * .85f + throttle * .12f;
-            rpm = Mathf.Lerp(rpm, target, Time.deltaTime * 7);
+            rpm = Mathf.Lerp(rpm, vehicle.Drivetrain.NormalizedRpm, Time.deltaTime * 9);
             float engineVolume = Settings == null ? .85f : Settings.EngineVolume;
             float effectsVolume = Settings == null ? .8f : Settings.EffectsVolume;
             float distanceMix = vehicle.IsPlayer ? 1 : vehicle.ControlEnabled ? .38f : 0;
             float gain = Time.timeScale == 0 ? 0 : engineVolume * distanceMix;
-            float shiftDip = shift > 0 ? .42f : 1;
+            float shiftDip = vehicle.Drivetrain.IsShifting ? .42f : 1;
             idle.pitch = .85f + rpm * 1.6f;
             load.pitch = .65f + rpm * 1.25f;
             idle.volume = (.12f + (1 - rpm) * .08f) * gain;

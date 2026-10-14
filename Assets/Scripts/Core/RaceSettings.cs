@@ -2,7 +2,7 @@ namespace Coastline
 {
     public enum RaceState
     {
-        Garage, Countdown, Racing, Paused, Results
+        Garage, Countdown, Racing, Finishing, Paused, Results
     }
     public enum RaceMode
     {

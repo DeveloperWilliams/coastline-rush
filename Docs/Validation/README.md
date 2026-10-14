@@ -6,12 +6,16 @@ physical WheelCollider vehicles. The driver does not teleport around the track.
 | Scenario | Track | Surface | Coverage |
 |---|---|---|---|
 | `palm-coast-dry.json` | Palm Coast | Dry | Resource loading, suspension, acceleration, braking, steering, nitro, solid collisions, pause, restart and a three-lap race |
-| `highland-loop-wet.json` | Highland Loop | Wet | The same physical sequence on the second circuit and lower-grip weather preset |
+| `highland-loop-wet.json` | Highland Loop | Wet | Club Sport, the second circuit and the wet-weather grip preset |
+| `nova-time-trial.json` | Palm Coast | Dry | Nova R acceleration/handling and a one-lap solo event that finalizes immediately |
 
 Each report records the measured speeds, steering response, remaining boost,
 completed laps, recovery count and individual checks. Values are smoke-test
 measurements on this Mac, rather than a guarantee of identical results on other
-hardware. The sixteen track/race-rule checks also passed in the Unity editor.
+hardware. The expanded rules checks cover both track layouts, closed guide seams, braking
+envelopes, wet grip, clean/recovered records, gear shifts, safe passing and
+penalty-adjusted classification. Full-race reports include the rival finish count
+and whether the provisional finish phase was observed.
 
 The full-race test temporarily gives the player car the same AI controller as
 the rivals and restores the saved garage settings afterward. It does not save

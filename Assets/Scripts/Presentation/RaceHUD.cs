@@ -6,7 +6,7 @@ namespace Coastline
     {
         public CoastlineRace Bootstrap;
         public RaceDirector Director;
-        Texture2D pixel; readonly Dictionary<int, GUIStyle> styles = new Dictionary<int, GUIStyle>(); GUIStyle button;
+        Texture2D pixel; readonly Dictionary<int, GUIStyle> styles = new Dictionary<int, GUIStyle>(); GUIStyle button, buttonCaption;
         readonly Color mint = new Color(.35f, .98f, .79f), muted = new Color(.65f, .74f, .75f), ink = new Color(.025f, .065f, .09f, .93f);
         float vw, vh; bool telemetry, credits;
         Font regular, semibold, bold;
@@ -58,14 +58,25 @@ namespace Coastline
                 button.normal.background = pixel;
                 button.hover.background = pixel;
                 button.active.background = pixel;
+                buttonCaption = new GUIStyle(GUI.skin.label)
+                {
+                    font = semibold, fontSize = 18, fontStyle = FontStyle.Normal,
+                    alignment = TextAnchor.MiddleCenter, wordWrap = false
+                };
             }
             Color bg = primary ? mint : new Color(.15f, .23f, .26f);
             button.normal.textColor = primary ? new Color(.025f, .13f, .15f) : Color.white;
             button.hover.textColor = button.normal.textColor;
             button.active.textColor = button.normal.textColor;
             GUI.backgroundColor = bg;
-            bool clicked = GUI.Button(new Rect(x, y, w, 48), text, button);
+            var rect = new Rect(x, y, w, 48);
+            bool clicked = GUI.Button(rect, GUIContent.none, button);
             GUI.backgroundColor = Color.white;
+            // Keep captions on the same label rendering path as the rest of the HUD.
+            // Captions remain independent of native button style state.
+            if (semibold) semibold.RequestCharactersInTexture(text, 18, FontStyle.Normal);
+            buttonCaption.normal.textColor = button.normal.textColor;
+            GUI.Label(rect, text, buttonCaption);
             if (clicked && Director)
                 Director.GetComponent<RaceAudio>()?.Click();
             return clicked;
@@ -93,7 +104,7 @@ namespace Coastline
             }
             if (Director.State == RaceState.Paused)
                 Pause();
-            if (Director.State == RaceState.Results)
+            if (Director.State == RaceState.Results || Director.State == RaceState.Finishing)
                 Results();
         }
         void Garage()
@@ -137,7 +148,7 @@ namespace Coastline
                         e.Driver.Pace = s.Pace;
                 Bootstrap.SaveSettings();
             }
-            if (Button(510, 569, 100, s.Laps + " LAPS"))
+            if (Button(510, 569, 100, (s.Laps + (s.Laps == 1 ? " LAP" : " LAPS"))))
             {
                 s.Laps = s.Laps == 1 ? 3 : s.Laps == 3 ? 5 : 1;
                 Bootstrap.SaveSettings();
@@ -151,7 +162,7 @@ namespace Coastline
             if (Button(244, 632, 170, "LINE: " + (s.ShowRacingLine ? "ON" : "OFF")))
             {
                 s.ShowRacingLine = !s.ShowRacingLine;
-                Director.Circuit.RacingLine.SetActive(s.ShowRacingLine);
+                Director.Circuit.RacingLine.SetActive(false);
                 Bootstrap.SaveSettings();
             }
             if (Button(430, 632, 180, "ASSIST: " + (s.AssistedSteering ? "ON" : "OFF")))
@@ -166,12 +177,14 @@ namespace Coastline
                 return;
             }
             Text(58, 785, 600, "ENTER  Start    •    WASD / ARROWS  Drive    •    C  Camera", 14, muted);
+            Text(58, 846, 600, "GUIDE: GREEN Accelerate   AMBER Lift   RED Brake", 13, muted);
+            Text(58, 814, 600, "←→ Car   ↑↓ Circuit   M Event   V Weather   L Laps", 13, muted);
             Text(vw - 405, 45, 365, "01 / COASTAL MOTORSPORT", 14, Color.white);
             Panel(vw - 370, vh - 255, 315, 192, new Color(.025f, .065f, .09f, .84f));
             Text(vw - 346, vh - 235, 265, VehicleFactory.Names[s.Car], 24, mint);
-            Text(vw - 346, vh - 190, 280, "AWD  /  5 GEARS  /  NITRO", 14);
-            Text(vw - 346, vh - 160, 270, "Tarmac · Curbs · Coastal elevation", 13, muted);
-            Text(vw - 346, vh - 128, 270, (Director.Circuit.Track.Length / 1000).ToString("0.00") + " KM     •     " + s.Laps + " LAPS", 16);
+            Text(vw - 346, vh - 190, 280, s.Car == 1 ? "CLUB / STABLE / HIGH GRIP" : s.Car == 2 ? "PRO / FAST / LOW ASSIST" : "SPORT / BALANCED / AWD", 14);
+            Text(vw - 346, vh - 160, 270, "SPEED LIMIT " + Mathf.RoundToInt(Director.Player.Vehicle.Tuning.topSpeed * 3.6f) + " KM/H  /  5 GEARS", 13, muted);
+            Text(vw - 346, vh - 128, 270, (Director.Circuit.Track.Length / 1000).ToString("0.00") + " KM     •     " + (s.Laps + (s.Laps == 1 ? " LAP" : " LAPS")), 16);
             if (Button(vw - 370, vh - 55, 315, credits ? "CLOSE CREDITS" : "CREDITS / LICENSES"))
                 credits = !credits;
             if (credits)
@@ -197,7 +210,7 @@ namespace Coastline
             Text(vw - 392, 60, 130, Director.Position(p) + " / " + Director.Entrants.Count, 30, mint);
             Text(vw - 244, 38, 190, "LAP", 12, muted);
             Text(vw - 244, 60, 190, Mathf.Min(p.Progress.CompletedLaps + 1, Director.Settings.Laps) + " / " + Director.Settings.Laps, 30);
-            Text(vw / 2 - 90, 30, 260, RaceDirector.FormatTime(Director.RaceTime), 30);
+            Text(vw / 2 - 90, 30, 260, RaceDirector.FormatTime(Director.PlayerTime), 30);
             Text(vw / 2 - 98, 73, 295, "BEST  " + (Director.BestSavedLap > 0 ? RaceDirector.FormatTime(Director.BestSavedLap) : "--:--.--"), 13, muted);
             Panel(28, 124, 225, Director.Entrants.Count * 34 + 42, new Color(.025f, .065f, .09f, .72f));
             Text(46, 138, 190, "LIVE CLASSIFICATION", 11, muted);
@@ -210,7 +223,8 @@ namespace Coastline
                 row++;
             }
             Panel(28, vh - 168, 305, 140);
-            Text(49, vh - 152, 160, "SPEED", 11, muted);
+            Text(49, vh - 152, 90, "SPEED", 11, muted);
+            Text(135, vh - 152, 170, (car.EngineRpm / 1000).ToString("0.0") + "K RPM", 11, car.Drivetrain.IsShifting ? mint : muted);
             Text(46, vh - 135, 160, Mathf.RoundToInt(car.SpeedKph).ToString(), 62);
             Text(216, vh - 108, 110, "KM/H", 16, muted);
             Text(220, vh - 143, 100, "G " + (car.ForwardSpeed < -.5f ? "R" : car.Gear.ToString()), 26, mint);
@@ -224,6 +238,14 @@ namespace Coastline
             {
                 Panel(vw / 2 - 300, 142, 600, 44, new Color(.025f, .065f, .09f, .8f));
                 Text(vw / 2 - 282, 152, 570, Director.Notification, 16, mint);
+            }
+            if (Director.State == RaceState.Racing)
+            {
+                float recommended = Director.Circuit.Guide.SuggestedSpeed(car.Location.Distance + 8);
+                if (Director.Settings.ShowRacingLine && car.Speed > recommended + 3)
+                    Text(vw / 2 - 115, 195, 350, "BRAKE  •  " + Mathf.RoundToInt(recommended * 3.6f) + " KM/H", 22, new Color(1, .5f, .3f));
+                if (!p.Progress.RecordEligible && !p.Progress.LapInvalid)
+                    Text(vw / 2 - 190, 232, 470, "RECOVERED LAP — RECORD INELIGIBLE", 13, muted);
             }
             if (p.Progress.WrongWay)
             {
@@ -267,7 +289,7 @@ namespace Coastline
             float x = vw / 2 - 230, y = vh / 2 - 270;
             Panel(x, y, 460, 550);
             Text(x + 34, y + 28, 400, "TAKE A BREATHER.", 32, mint);
-            Text(x + 34, y + 86, 400, "Your race is paused.", 17, muted);
+            Text(x + 34, y + 86, 400, "G Garage  •  R Restart  •  F11 Screen mode", 13, muted);
             if (Button(x + 34, y + 135, 392, "RESUME  →", true))
                 Director.Resume();
             if (Button(x + 34, y + 196, 392, "RESTART RACE"))
@@ -301,18 +323,27 @@ namespace Coastline
             Panel(x, y, 640, 650);
             int position = Director.Position(Director.Player);
             Text(x + 40, y + 24, 570, "CHEQUERED FLAG", 12, mint);
-            Text(x + 36, y + 64, 590, position == 1 ? "COASTLINE CHAMPION." : "FINISH LINE.", 37);
-            Text(x + 40, y + 128, 560, "POSITION " + position + " / " + Director.Entrants.Count + "    •    " + RaceDirector.FormatTime(Director.RaceTime), 25, mint);
-            Text(x + 40, y + 173, 560, "BEST LAP  " + RaceDirector.FormatTime(Director.Player.Progress.BestLap), 17, muted);
+            Text(x + 36, y + 64, 590, Director.State == RaceState.Finishing ? "RACE COMPLETE." : Director.Settings.Mode == RaceMode.TimeTrial ? "TIME TRIAL COMPLETE." : position == 1 ? "COASTLINE CHAMPION." : "FINISH LINE.", 37);
+            Text(x + 40, y + 128, 560, "POSITION " + position + " / " + Director.Entrants.Count + "    •    " + RaceDirector.FormatTime(Director.PlayerTime), 25, mint);
+            Text(x + 40, y + 173, 560, Director.State == RaceState.Finishing
+                ? "RIVALS FINISHING  /  " + Mathf.CeilToInt(Director.FinishSecondsRemaining) + "s  •  POSITION PROVISIONAL"
+                : "BEST CLEAN LAP  " + (Director.Player.Progress.BestLap > 0 ? RaceDirector.FormatTime(Director.Player.Progress.BestLap) : "—")
+                    + "   •   PENALTY +" + Director.Penalty.ToString("0") + "s", 16, muted);
             int row = 0;
-            foreach (var e in Director.Standings())
+            var standings = Director.Standings();
+            foreach (var e in standings)
             {
                 Panel(x + 40, y + 229 + row * 43, 560, 1, new Color(.25f, .35f, .38f));
                 Text(x + 44, y + 238 + row * 43, 60, (row + 1).ToString(), 18);
                 Text(x + 95, y + 238 + row * 43, 250, e.Name, 18, e.Color);
-                Text(x + 392, y + 238 + row * 43, 200, e.Progress.Finished ? RaceDirector.FormatTime(e.FinishTime) : "LAP " + (e.Progress.CompletedLaps + 1), 17, muted);
+                Text(x + 365, y + 238 + row * 43, 235, e.Progress.Finished
+                    ? (row == 0 ? RaceDirector.FormatTime(e.AdjustedTime) : "+" + (e.AdjustedTime - standings[0].AdjustedTime).ToString("0.00") + "s")
+                        + (e.Penalty > 0 ? " (+" + e.Penalty.ToString("0") + ")" : "")
+                    : Director.State == RaceState.Results ? "DNF / LAP " + (e.Progress.CompletedLaps + 1) : "LAP " + (e.Progress.CompletedLaps + 1), 17, muted);
                 row++;
             }
+            if (Director.State == RaceState.Finishing)
+                return;
             if (Button(x + 40, y + 515, 270, "RACE AGAIN  →", true))
                 Director.StartRace();
             if (Button(x + 330, y + 515, 270, "GARAGE"))

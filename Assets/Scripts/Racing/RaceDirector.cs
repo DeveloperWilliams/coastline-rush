@@ -6,7 +6,8 @@ namespace Coastline
     [Serializable]
     public sealed class RaceEntrant
     {
-        public string Name; public Color Color; public VehicleController Vehicle; public AIDriver Driver; public LapProgress Progress = new LapProgress(); public float GridDistance, Lane, FinishTime; public int Recoveries;
+        public string Name; public Color Color; public VehicleController Vehicle; public AIDriver Driver; public LapProgress Progress = new LapProgress(); public float GridDistance, Lane, FinishTime, Penalty;
+        public float AdjustedTime => FinishTime + Penalty; public int Recoveries;
     }
     public sealed class RaceDirector : MonoBehaviour
     {
@@ -36,10 +37,10 @@ namespace Coastline
         {
             get; private set;
         }
-        public float Penalty
-        {
-            get; private set;
-        }
+        public float Penalty => Player == null ? 0 : Player.Penalty;
+        public float PlayerTime => Player == null ? RaceTime : (Player.Progress.Finished ? Player.FinishTime : RaceTime) + Penalty;
+        public bool IsRaceActive => State == RaceState.Racing || State == RaceState.Finishing;
+        public float FinishSecondsRemaining => Mathf.Max(0, 45 - (RaceTime - finishStarted));
         public string Notification
         {
             get; private set;
@@ -48,6 +49,9 @@ namespace Coastline
         public Action ReturnToGarage;
         float toast, lastRecovery = -10;
         RaceAudio cues;
+        RaceState pausedState;
+        AIDriver cooldownDriver;
+        float finishStarted;
         public void Initialize(RaceSettings settings, CircuitBuilder circuit, VehicleTuning tuning)
         {
             Settings = settings;
@@ -73,23 +77,33 @@ namespace Coastline
                     entrant.Driver = vehicle.gameObject.AddComponent<AIDriver>();
                     entrant.Driver.Director = this;
                     entrant.Driver.Entrant = entrant;
-                    entrant.Driver.Lane = entrant.Lane;
+                    entrant.Driver.ResetDriver(entrant.Lane);
+                    entrant.Driver.Aggression = .3f + i * .1f;
                     entrant.Driver.Pace = settings.Pace + (i - 2) * .012f;
                 }
                 else
                     Player = entrant;
                 Entrants.Add(entrant);
             }
+            circuit.Guide.SetVehicle(Player.Vehicle);
+            circuit.RacingLine.SetActive(false);
             string key = BestKey();
             BestSavedLap = PlayerPrefs.GetFloat(key, 0);
             AudioListener.volume = settings.Volume;
         }
-        string BestKey() => "cr-v2-lap-" + Circuit.Track.Id + "-" + Settings.Car + "-" + Settings.Weather;
+        string BestKey() => "cr-v3-lap-" + Circuit.Track.Id + "-" + Settings.Car + "-" + Settings.Weather;
         public void StartRace()
         {
             Time.timeScale = 1;
             AudioListener.pause = false;
-            RaceTime = Penalty = 0;
+            if (cooldownDriver)
+            {
+                cooldownDriver.enabled = false;
+                Player.Driver = null;
+                Destroy(cooldownDriver);
+                cooldownDriver = null;
+            }
+            RaceTime = finishStarted = 0;
             lastRecovery = -10;
             Countdown = 3;
             toast = 0;
@@ -97,27 +111,29 @@ namespace Coastline
             cues.BeginCountdown();
             foreach (var e in Entrants)
             {
-                e.FinishTime = 0;
+                e.FinishTime = e.Penalty = 0;
                 e.Recoveries = 0;
                 e.Vehicle.ControlEnabled = false;
                 e.Vehicle.ResetAt(e.GridDistance, e.Lane);
                 e.Progress.Reset(e.GridDistance, Circuit.Track.Length);
                 if (e.Driver)
-                    e.Driver.Lane = e.Lane;
+                    e.Driver.ResetDriver(e.Lane);
             }
             Circuit.RacingLine.SetActive(Settings.ShowRacingLine);
             Toast("FIND YOUR LINE. CHASE THE COASTLINE.");
         }
         void Update()
         {
+            if (Input.GetKeyDown(KeyCode.G) && (State == RaceState.Paused || State == RaceState.Results || State == RaceState.Finishing))
+                Garage();
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (State == RaceState.Racing)
+                if (IsRaceActive)
                     Pause();
                 else if (State == RaceState.Paused)
                     Resume();
             }
-            if (Input.GetKeyDown(KeyCode.R) && (State == RaceState.Racing || State == RaceState.Results || State == RaceState.Paused))
+            if (Input.GetKeyDown(KeyCode.R) && (IsRaceActive || State == RaceState.Results || State == RaceState.Paused))
                 StartRace();
             if (Input.GetKeyDown(KeyCode.F) && State == RaceState.Racing)
                 Recover(Player);
@@ -145,10 +161,10 @@ namespace Coastline
                 }
                 return;
             }
-            if (State != RaceState.Racing)
+            if (!IsRaceActive)
                 return;
             RaceTime += Time.deltaTime;
-            if (!Player.Driver || !Player.Driver.enabled)
+            if (!DiagnosticMode && !Player.Progress.Finished && (!Player.Driver || !Player.Driver.enabled))
                 Player.Vehicle.Input = ReadPlayerInput();
             foreach (var e in Entrants)
             {
@@ -163,7 +179,7 @@ namespace Coastline
                     {
                         cues.Lap();
                         Toast("LAP " + e.Progress.CompletedLaps + " / " + Settings.Laps + "   •   " + FormatTime(e.Progress.LastLap));
-                        if (!DiagnosticMode && (BestSavedLap == 0 || e.Progress.LastLap < BestSavedLap))
+                        if (!DiagnosticMode && e.Progress.LastLapEligible && (BestSavedLap == 0 || e.Progress.LastLap < BestSavedLap))
                         {
                             BestSavedLap = e.Progress.LastLap;
                             PlayerPrefs.SetFloat(BestKey(), BestSavedLap);
@@ -175,20 +191,34 @@ namespace Coastline
                         e.FinishTime = RaceTime;
                         if (e == Player)
                         {
-                            State = RaceState.Results;
+                            State = RaceState.Finishing;
+                            finishStarted = RaceTime;
                             cues.Finish();
-                            foreach (var car in Entrants)
+                            if (!Player.Driver || !Player.Driver.enabled)
                             {
-                                car.Vehicle.ControlEnabled = false;
-                                car.Vehicle.Input = DriveInput.Stopped;
+                                cooldownDriver = Player.Vehicle.gameObject.AddComponent<AIDriver>();
+                                cooldownDriver.Director = this;
+                                cooldownDriver.Entrant = Player;
+                                cooldownDriver.ResetDriver(0);
+                                Player.Driver = cooldownDriver;
                             }
-                            Debug.Log("RACE_FINISHED position=" + Position(Player) + " time=" + RaceTime);
+                            Toast("CHEQUERED FLAG — RIVALS ARE FINISHING");
+                            Debug.Log("PLAYER_FINISHED time=" + PlayerTime);
+
                         }
                     }
                 }
             }
-            if (Player.Vehicle.transform.position.y < -8)
+            if (!Player.Progress.Finished && Player.Vehicle.transform.position.y < -8)
                 Recover(Player);
+            if (State == RaceState.Finishing)
+            {
+                bool allFinished = true;
+                foreach (var entrant in Entrants)
+                    allFinished &= entrant.Progress.Finished;
+                if (allFinished || FinishSecondsRemaining <= 0)
+                    CompleteRace();
+            }
         }
         DriveInput ReadPlayerInput()
         {
@@ -203,8 +233,9 @@ namespace Coastline
         }
         public void Pause()
         {
-            if (State != RaceState.Racing)
+            if (!IsRaceActive)
                 return;
+            pausedState = State;
             State = RaceState.Paused;
             Time.timeScale = 0;
             AudioListener.pause = true;
@@ -213,7 +244,7 @@ namespace Coastline
         {
             if (State != RaceState.Paused)
                 return;
-            State = RaceState.Racing;
+            State = pausedState;
             Time.timeScale = 1;
             AudioListener.pause = false;
         }
@@ -222,50 +253,52 @@ namespace Coastline
             Time.timeScale = 1;
             AudioListener.pause = false;
             State = RaceState.Garage;
+            Circuit.RacingLine.SetActive(false);
             foreach (var e in Entrants)
                 e.Vehicle.ControlEnabled = false;
             ReturnToGarage?.Invoke();
         }
         public void Recover(RaceEntrant entrant)
         {
-            if (entrant == null || State != RaceState.Racing)
+            if (entrant == null || !IsRaceActive || entrant.Progress.Finished)
                 return;
             if (entrant == Player && RaceTime - lastRecovery < 3)
                 return;
             float safe = Mathf.Min(entrant.Progress.AbsoluteDistance, entrant.Progress.CompletedLaps * Circuit.Track.Length + (entrant.Progress.NextSector - 1) * Circuit.Track.Length / LapProgress.SectorCount);
             safe = Mathf.Max(entrant.Progress.CompletedLaps * Circuit.Track.Length - 3, safe - 4);
-            entrant.Vehicle.ResetAt(safe, entrant.Lane);
+            entrant.Vehicle.ResetAt(safe, entrant.Lane, false);
             entrant.Progress.Recover(safe, Circuit.Track.Length);
             entrant.Recoveries++;
+            entrant.Penalty += 5;
             if (entrant == Player)
             {
-                Penalty += 5;
-                RaceTime += 5;
                 lastRecovery = RaceTime;
                 Toast("RECOVERED TO LAST SECTOR   •   +5 SECONDS");
             }
         }
+        void CompleteRace()
+        {
+            State = RaceState.Results;
+            foreach (var entrant in Entrants)
+            {
+                entrant.Vehicle.ControlEnabled = false;
+                entrant.Vehicle.Input = DriveInput.Stopped;
+            }
+            Toast("FINAL CLASSIFICATION");
+            Debug.Log("RACE_FINISHED position=" + Position(Player) + " time=" + PlayerTime);
+        }
         public int Position(RaceEntrant target)
         {
             int position = 1;
-            foreach (var e in Entrants)
-            {
-                if (e == target)
-                    continue;
-                if (e.Progress.Finished)
-                {
-                    if (!target.Progress.Finished || e.FinishTime < target.FinishTime)
-                        position++;
-                }
-                else if (!target.Progress.Finished && e.Progress.AbsoluteDistance > target.Progress.AbsoluteDistance)
+            foreach (var entrant in Entrants)
+                if (entrant != target && RaceClassification.Compare(entrant, target) < 0)
                     position++;
-            }
             return position;
         }
         public List<RaceEntrant> Standings()
         {
             var sorted = new List<RaceEntrant>(Entrants);
-            sorted.Sort((a, b) => Position(a).CompareTo(Position(b)));
+            sorted.Sort(RaceClassification.Compare);
             return sorted;
         }
         public void Toast(string message)
